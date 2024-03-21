@@ -1,0 +1,85 @@
+{
+  "results": [
+    {
+      "file_name": "IMG_20201127_235047.jpg",
+      "num_colors": 3,
+      "num_detections": 3,
+      "detected_objects": [
+        {
+          "xmin": 1786,
+          "ymin": 2231,
+          "xmax": 2641,
+          "ymax": 3073
+        },
+        {
+          "xmin": 91,
+          "ymin": 1452,
+          "xmax": 765,
+          "ymax": 2152
+        },
+        {
+          "xmin": 2195,
+          "ymin": 710,
+          "xmax": 2648,
+          "ymax": 1325
+        }
+      ]  
+    },
+    {
+      "file_name": "IMG_20201127_234711.jpg",
+      "num_colors": 3,
+      "num_detections": 5,
+      "detected_objects": [
+        {
+          "xmin": 1445,
+          "ymin": 2713,
+          "xmax": 1991,
+          "ymax": 3294
+        },
+        {
+          "xmin": 580,
+          "ymin": 2391,
+          "xmax": 1268,
+          "ymax": 3098
+        },
+        {
+          "xmin": 1746,
+          "ymin": 1598,
+          "xmax": 2698,
+          "ymax": 2294
+        },
+        {
+          "xmin": 1258,
+          "ymin": 1383,
+          "xmax": 1479,
+          "ymax": 1706
+        },
+        {
+          "xmin": 1525,
+          "ymin": 1,
+          "xmax": 2111,
+          "ymax": 718
+        }
+      ]
+    },
+    {
+      "file_name": "2_7mUR_original-test_1609981034838.jpg",
+      "num_colors": 2,
+      "num_detections": 2,
+      "detected_objects": [
+        {
+          "xmin": 556,
+          "ymin": 1279,
+          "xmax": 1394,
+          "ymax": 1811
+        },
+        {
+          "xmin": 1318,
+          "ymin": 1574,
+          "xmax": 1809,
+          "ymax": 2045
+        }
+      ]  
+    }
+  ]
+}
