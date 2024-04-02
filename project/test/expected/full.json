@@ -350,19 +350,6 @@
         ]  
       },
       {
-        "file_name": "",
-        "num_colors": 1,
-        "num_detections": 1,
-        "detected_objects": [
-            {
-              "xmin": 0,
-              "ymin": 0,
-              "xmax": 0,
-              "ymax": 0
-            }
-        ]  
-      },
-      {
         "file_name": "IMG_20201127_001831.jpg",
         "num_colors": 7,
         "num_detections": 10,
