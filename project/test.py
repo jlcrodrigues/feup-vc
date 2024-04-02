@@ -27,6 +27,7 @@ class TestPipelineAccuracy(unittest.TestCase):
                 # Initialize counts for accuracy calculation
                 total_detections = 0
                 correct_detections = 0
+                detection_errors = []
                 total_colors = 0
                 correct_colors = 0
 
@@ -38,7 +39,9 @@ class TestPipelineAccuracy(unittest.TestCase):
                     correct_colors += actual_image_result.num_colors
 
                     total_detections += expected_image_result['num_detections']
-                    correct_detections += len(actual_image_result.detected_objects)
+                    correct_detections += actual_image_result.num_detections
+
+                    detection_errors.append(abs(expected_image_result['num_detections'] - actual_image_result.num_detections)/expected_image_result['num_detections'])
 
                     # TODO: Compare detected objects
                     
@@ -46,6 +49,7 @@ class TestPipelineAccuracy(unittest.TestCase):
                 # Calculate percentages
                 accuracy_colors = (correct_colors / total_colors) * 100
                 accuracy_detections = (correct_detections / total_detections) * 100
+                accuracy_detections = (1 - sum(detection_errors) / len(detection_errors)) * 100
 
                 # Print percentages
                 print(f"Accuracy for \033[1m\033[4m{input_file}\033[0m:")
