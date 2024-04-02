@@ -48,9 +48,10 @@ class TestPipelineAccuracy(unittest.TestCase):
                 accuracy_detections = (correct_detections / total_detections) * 100
 
                 # Print percentages
-                print(f"Accuracy for {input_file}:")
-                print(f"  Colors:      \033[1m{accuracy_colors:.2f}%\033[0m ({correct_colors}/{total_colors})")
+                print(f"Accuracy for \033[1m\033[4m{input_file}\033[0m:")
                 print(f"  Detections:  \033[1m{accuracy_detections:.2f}%\033[0m ({correct_detections}/{total_detections})")
+                print(f"  Colors:      \033[1m{accuracy_colors:.2f}%\033[0m ({correct_colors}/{total_colors})")
+                print()
 
 if __name__ == '__main__':
     unittest.main()
