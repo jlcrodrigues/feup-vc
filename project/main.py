@@ -7,7 +7,7 @@ import numpy as np
 DEBUG = True
 
 INPUT_PATH = 'demo.json'
-INPUT_PATH = 'test/input/full.json'
+#INPUT_PATH = 'test/input/full.json'
 OUTPUT_PATH = 'output.json'
 SAMPLES_PATH = 'samples/'
 
@@ -73,10 +73,11 @@ def process_image(sample_path, debug=False) -> ImageResult:
     preprocessed_img = preprocess_image(resized_img)
     cv2.imshow('Original Image', img)
     contours = get_contours(preprocessed_img)
+    num_colors = get_colors(preprocessed_img, contours)
 
     result = ImageResult(
         file_name=sample_path,
-        num_colors=0,
+        num_colors=num_colors,
         num_detections=len(contours),
         detected_objects=[]
     )
@@ -212,6 +213,31 @@ def get_contours(img) -> List:
     # get bounding rect
 
     return contours
+
+def get_colors(img, contours):
+    average_colors = []
+    for contour in contours:
+        mask = np.zeros(img.shape[:2], np.uint8)
+        cv2.drawContours(mask, [contour], -1, (255), -1)
+        threshold_distance = 0.05
+        mean_color = cv2.mean(img, mask=mask)[:3]  
+        if not is_color_similar(mean_color, average_colors, threshold_distance):
+            average_colors.append(mean_color)
+        mask.fill(0)
+
+    return len(average_colors)
+
+def is_color_similar(color, color_list, threshold):
+    """Check if the given color is similar to any color in the list."""
+    max_distance = np.sqrt(3 * 255**2)
+    for existing_color in color_list:
+        color1_np = np.array(color)
+        color2_np = np.array(existing_color)
+        color_distance= np.sqrt(np.sum((color1_np - color2_np)**2))
+        similarity = (max_distance - color_distance) / max_distance
+        if similarity > 1 - threshold:
+            return True
+    return False
 
 
 if __name__ == '__main__':
