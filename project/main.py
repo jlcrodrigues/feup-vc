@@ -231,7 +231,7 @@ def get_colors(img, contours):
     for contour in contours:
         mask = np.zeros(img.shape[:2], np.uint8)
         cv2.drawContours(mask, [contour], -1, (255), -1)
-        threshold_distance = 0.05
+        threshold_distance = 0.07
         mean_color = cv2.mean(img, mask=mask)[:3]  
         if not is_color_similar(mean_color, average_colors, threshold_distance):
             average_colors.append(mean_color)
