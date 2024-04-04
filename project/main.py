@@ -194,6 +194,18 @@ def get_contours(img) -> List:
     contours = [cnt for i, cnt in enumerate(
         contours) if i not in overlapping]
 
+
+    contours_to_remove = []
+    for i, cnt in enumerate(contours):
+        for j, cnt2 in enumerate(contours):
+            if i != j:
+                x, y, w, h = cv2.boundingRect(cnt2)
+                x2, y2, w2, h2 = cv2.boundingRect(cnt)
+                if (x <= x2) and ((x + w) >= (x2 + w2)) and (y <= y2) and ((y + h) >= (y2 + h2)):
+                    contours_to_remove.append(i)
+
+    contours = [cnt for i, cnt in enumerate(
+        contours) if i not in contours_to_remove]
     # std deviation filter
     # mean_area = np.mean([cv2.contourArea(cnt) for cnt in contours])
     # std_area = np.std([cv2.contourArea(cnt) for cnt in contours])
