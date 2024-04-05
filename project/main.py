@@ -7,7 +7,7 @@ import numpy as np
 DEBUG = True
 
 INPUT_PATH = 'demo.json'
-#INPUT_PATH = 'test/input/full.json'
+INPUT_PATH = 'input_files/corners.json'
 OUTPUT_PATH = 'output.json'
 SAMPLES_PATH = 'samples/'
 
@@ -203,6 +203,12 @@ def get_contours(img) -> List:
                 x2, y2, w2, h2 = cv2.boundingRect(cnt)
                 if (x <= x2) and ((x + w) >= (x2 + w2)) and (y <= y2) and ((y + h) >= (y2 + h2)):
                     contours_to_remove.append(i)
+
+    # Removing contours that touch the image border
+    for i, cnt in enumerate(contours):
+        x, y, w, h = cv2.boundingRect(cnt)
+        if x == 0 or y == 0 or x+w == img.shape[1] or y+h == img.shape[0]:
+            contours_to_remove.append(i)
 
     contours = [cnt for i, cnt in enumerate(
         contours) if i not in contours_to_remove]
