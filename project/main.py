@@ -204,10 +204,10 @@ def get_contours(img) -> List:
                 if (x <= x2) and ((x + w) >= (x2 + w2)) and (y <= y2) and ((y + h) >= (y2 + h2)):
                     contours_to_remove.append(i)
 
-    # Removing contours that touch the image border
+    # Removing contours that touch the image corner
     for i, cnt in enumerate(contours):
         x, y, w, h = cv2.boundingRect(cnt)
-        if x == 0 or y == 0 or x+w == img.shape[1] or y+h == img.shape[0]:
+        if (x == 0 and y == 0) or (x == 0 and y + h == img.shape[0]) or (x + w == img.shape[1] and y == 0) or (x + w == img.shape[1] and y + h == img.shape[0]):
             contours_to_remove.append(i)
 
     contours = [cnt for i, cnt in enumerate(
