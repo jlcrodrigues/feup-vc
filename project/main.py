@@ -7,7 +7,7 @@ import numpy as np
 DEBUG = True
 
 INPUT_PATH = 'demo.json'
-INPUT_PATH = 'input_files/corners.json'
+#INPUT_PATH = 'input_files/corners.json'
 OUTPUT_PATH = 'output.json'
 SAMPLES_PATH = 'samples/'
 
@@ -237,25 +237,60 @@ def get_colors(img, contours):
     for contour in contours:
         mask = np.zeros(img.shape[:2], np.uint8)
         cv2.drawContours(mask, [contour], -1, (255), -1)
-        threshold_distance = 0.07
         mean_color = cv2.mean(img, mask=mask)[:3]  
-        if not is_color_similar(mean_color, average_colors, threshold_distance):
+
+        mean_color = find_dominant_color(img, mask)
+    
+        if not is_color_similar(mean_color, average_colors, color_space="lab"):
             average_colors.append(mean_color)
         mask.fill(0)
 
     return len(average_colors)
 
-def is_color_similar(color, color_list, threshold):
+def find_dominant_color(image, mask=None):
+    cv2.cvtColor(image, cv2.COLOR_BGR2LAB, dst=image)
+    cv2.bitwise_and(image, image, mask=mask, dst=image)
+    cv2.medianBlur(image, 13, dst=image)
+    return cv2.mean(image, mask=mask)[:3]
+
+def is_color_similar(color, color_list, color_space="rgb"):
     """Check if the given color is similar to any color in the list."""
-    max_distance = np.sqrt(3 * 255**2)
-    for existing_color in color_list:
-        color1_np = np.array(color)
-        color2_np = np.array(existing_color)
-        color_distance= np.sqrt(np.sum((color1_np - color2_np)**2))
-        similarity = (max_distance - color_distance) / max_distance
-        if similarity > 1 - threshold:
-            return True
-    return False
+    if color_space == "rgb":
+        RGB_THRESHOLD = 0.022
+        max_distance = np.sqrt((0.3+0.59+0.11) * 255**2)
+        for existing_color in color_list:
+            color1_np = np.array(color)
+            color2_np = np.array(existing_color)
+            color_distance = np.sqrt(color1_np[0] * 0.3 + color1_np[1] * 0.59 + color1_np[2] * 0.11)
+            
+            similarity = (max_distance - color_distance) / max_distance
+            if similarity > 1 - RGB_THRESHOLD:
+                return True
+        return False
+    elif color_space == "lab":
+        LAB_THRESHOLD = 0.00850
+        max_distance = np.sqrt(3 * 255**2)
+        for existing_color in color_list:
+            color1_np = np.array(color)
+            color2_np = np.array(existing_color)
+            color_distance= np.sqrt(np.sum((color1_np - color2_np)**2))
+            similarity = (max_distance - color_distance) / max_distance
+            if similarity > 1 - LAB_THRESHOLD:
+                return True
+        return False
+    elif color_space == "hsv":
+        HSV_THRESHOLD = 0.05
+        for existing_color in color_list:
+            hue_distance = min(abs(color[0] - existing_color[0]), 1 - abs(color[0] - existing_color[0]))
+            saturation_distance = abs(color[1] - existing_color[1])
+            value_distance = abs(color[2] - existing_color[2])
+            color_distance = np.sqrt(hue_distance**2 + saturation_distance**2 + value_distance**2)
+            similarity = (1 - color_distance)
+            if similarity > 1 - HSV_THRESHOLD:
+                return True
+        return False
+    else:
+        raise ValueError("Invalid color space.")
 
 
 if __name__ == '__main__':
