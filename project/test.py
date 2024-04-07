@@ -1,7 +1,7 @@
 import json
 import os
 import unittest
-from main import load_input, run_pipeline, ImageResult, DetectedObject
+from main import load_input, process_images, ImageResult, DetectedObject
 
 class TestPipelineAccuracy(unittest.TestCase):
     INPUT_DIR = 'test/input/'
@@ -18,7 +18,7 @@ class TestPipelineAccuracy(unittest.TestCase):
 
                 # Load input data and run pipeline
                 image_files = load_input(input_path)
-                results = run_pipeline(image_files)
+                results = process_images(image_files, "samples")
 
                 # Load expected results
                 with open(expected_path) as f:

@@ -3,13 +3,12 @@ from dataclasses import dataclass, asdict
 from typing import List
 import cv2
 import numpy as np
+import sys
+import os
 
-DEBUG = True
-
-INPUT_PATH = 'demo.json'
-#INPUT_PATH = 'input_files/corners.json'
+DEBUG = False
 OUTPUT_PATH = 'output.json'
-SAMPLES_PATH = 'samples/'
+RESIZE_SHAPE = (500, 500)
 
 
 @dataclass
@@ -60,18 +59,28 @@ def display_results(result: ImageResult, img, contours):
     cv2.destroyAllWindows()
 
 
-def run_pipeline(samples: List[str], debug=False) -> Results:
+def process_images(samples: List[str], samples_dir, debug=False) -> Results:
     results = []
     for sample in samples:
-        results.append(process_image(sample, debug=debug))
+        results.append(process_image(
+            os.path.join(samples_dir, sample), debug=debug))
     return Results(results)
 
 
 def process_image(sample_path, debug=False) -> ImageResult:
-    img = cv2.imread(SAMPLES_PATH + sample_path)
-    resized_img = preprocess_image(img, resize_shape=(500, 500), blur=False)
+    """
+    Image processing pipeline.
+    As per described in the report:
+        - Preprocess image (resize, blur)
+        - Find contours (canny, dilate, findContours)
+        - Get colors (mean color of each contour)
+    """
+    if not os.path.exists(sample_path):
+        raise FileNotFoundError(
+            f"File not found: {sample_path}, check samples_dir.")
+    img = cv2.imread(sample_path)
+    resized_img = preprocess_image(img, resize_shape=RESIZE_SHAPE, blur=False)
     preprocessed_img = preprocess_image(resized_img)
-    cv2.imshow('Original Image', img)
     contours = get_contours(preprocessed_img)
     num_colors = get_colors(preprocessed_img, contours)
 
@@ -79,7 +88,7 @@ def process_image(sample_path, debug=False) -> ImageResult:
         file_name=sample_path,
         num_colors=num_colors,
         num_detections=len(contours),
-        detected_objects=[]
+        detected_objects=get_detected_objects(img, preprocessed_img, contours)
     )
 
     if debug:
@@ -89,8 +98,23 @@ def process_image(sample_path, debug=False) -> ImageResult:
 
 
 def main():
-    sample_paths = load_input(INPUT_PATH)
-    result = run_pipeline(sample_paths, debug=DEBUG)
+    """
+    Main function to run the program.
+    The program expects two arguments:
+    - input_path: Path to the input JSON file
+    - samples_dir: (optional) Directory containing the sample images
+    """
+    if len(sys.argv) < 2:
+        print("Usage: python main.py <input_file> [<samples_dir>]")
+        print()
+        print("Example:")
+        print("  python main.py input.json samples")
+        sys.exit(1)
+    input_path = sys.argv[1]
+    samples_dir = sys.argv[2] if len(sys.argv) > 2 else '.'
+
+    sample_paths = load_input(input_path)
+    result = process_images(sample_paths, samples_dir, debug=DEBUG)
     store_output(OUTPUT_PATH, result)
 
 
@@ -106,14 +130,12 @@ def preprocess_image(img, grayscale=False, resize_shape=None, blur=True):
         img: Image to preprocess
         grayscale: Convert image to grayscale if True
         resize_shape: Resize image to this shape if not None
+        blur: If true, applies a median blur to the image
 
     Returns:
         Preprocessed image
     """
-
-    # Adjustable parameters
     median_blur_ksize = 13
-    gaussian_blur_ksize = 7
 
     # Resize
     if resize_shape is not None:
@@ -123,78 +145,21 @@ def preprocess_image(img, grayscale=False, resize_shape=None, blur=True):
     if grayscale:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+    # Blur
     if blur:
-        # Median blur
         img = cv2.medianBlur(img, median_blur_ksize)
-
-        # gaussian blur
-        #img = cv2.GaussianBlur(
-         #   img, (gaussian_blur_ksize, gaussian_blur_ksize), 0)
 
     return img
 
-def intersection_area(cnt1, cnt2, img):
-    """Find the intersection area between two contours."""
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    blank1 = np.zeros_like(gray_img)
-    blank2 = np.zeros_like(gray_img)
-
-    cv2.drawContours(blank1, [cnt1], 0, (255), thickness=cv2.FILLED)
-    cv2.drawContours(blank2, [cnt2], 0, (255), thickness=cv2.FILLED)
-
-    intersection = cv2.bitwise_and(blank1, blank2)
-
-    contours, _ = cv2.findContours(
-        intersection, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    intersection_area = 0
-    for contour in contours:
-        intersection_area += cv2.contourArea(contour)
-    return intersection_area
-
 
 def get_contours(img) -> List:
-    # Apply threshold
-    # tresh = cv2.threshold(gray_img, 100, 255, cv2.THRESH_BINARY)[1]
-    tresh = img
-
-    # TODO: see if this is worth it
-    # # apply erosions to reduce size of foreground objects
-    # mask = tresh.copy()
-    # mask = cv2.erode(mask, None, iterations=5)
-    # cv2.imshow('Eroded Image', mask)
-    # cv2.waitKey(0)
-    # cv2.destroyWindow('Eroded Image')
-
-    # Canny edge filter
-    mask = cv2.Canny(tresh, 40, 210)
-
+    mask = cv2.Canny(img, 40, 210)
     dilated = cv2.dilate(mask, None, iterations=1)
-
-    # find contours
     contours, hierarchy = cv2.findContours(
         dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
     # Filter overlapping contours
-    overlapping = []
-    for i, cnt in enumerate(contours):
-        for j, cnt2 in enumerate(contours):
-            if i != j:
-                area1 = cv2.contourArea(cnt)
-                area2 = cv2.contourArea(cnt2)
-                if area1 > area2:
-                    continue
-                intersect_area = intersection_area(cnt, cnt2, img)
-                if intersect_area > 0.8 * area1:
-                    #if area1 > 0.7 * area2 and area1 < 1.3 * area2 :
-                    overlapping.append(i)
-                    break
-    contours = [cnt for i, cnt in enumerate(
-        contours) if i not in overlapping]
-
-
     contours_to_remove = []
     for i, cnt in enumerate(contours):
         for j, cnt2 in enumerate(contours):
@@ -204,7 +169,7 @@ def get_contours(img) -> List:
                 if (x <= x2) and ((x + w) >= (x2 + w2)) and (y <= y2) and ((y + h) >= (y2 + h2)):
                     contours_to_remove.append(i)
 
-    # Removing contours that touch the image corner
+    # Removing contours that touch the image corners
     for i, cnt in enumerate(contours):
         x, y, w, h = cv2.boundingRect(cnt)
         if (x == 0 and y == 0) or (x == 0 and y + h == img.shape[0]) or (x + w == img.shape[1] and y == 0) or (x + w == img.shape[1] and y + h == img.shape[0]):
@@ -212,46 +177,31 @@ def get_contours(img) -> List:
 
     contours = [cnt for i, cnt in enumerate(
         contours) if i not in contours_to_remove]
-    # std deviation filter
-    # mean_area = np.mean([cv2.contourArea(cnt) for cnt in contours])
-    # std_area = np.std([cv2.contourArea(cnt) for cnt in contours])
-    # tresh_area = mean_area + std_area
-
-    # final_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > tresh_area]
-
-    # filter in contours that dont have parents
-    # final_contours2 = [cnt for i,cnt in enumerate(contours) if hierarchy[0][i][3] == -1]
-
-    # for i,cnt in enumerate(contours):
-    #     if hierarchy[0][i][2] == -1:
-    #         print(cv2.contourArea(cnt))
-    #         final_contours.append(cnt)
-
-    # show image with contours
-    # get bounding rect
 
     return contours
+
 
 def get_colors(img, contours):
     average_colors = []
     for contour in contours:
         mask = np.zeros(img.shape[:2], np.uint8)
         cv2.drawContours(mask, [contour], -1, (255), -1)
-        mean_color = cv2.mean(img, mask=mask)[:3]  
 
         mean_color = find_dominant_color(img, mask)
-    
+
         if not is_color_similar(mean_color, average_colors, color_space="lab"):
             average_colors.append(mean_color)
         mask.fill(0)
 
     return len(average_colors)
 
+
 def find_dominant_color(image, mask=None):
     cv2.cvtColor(image, cv2.COLOR_BGR2LAB, dst=image)
     cv2.bitwise_and(image, image, mask=mask, dst=image)
     cv2.medianBlur(image, 13, dst=image)
     return cv2.mean(image, mask=mask)[:3]
+
 
 def is_color_similar(color, color_list, color_space="rgb"):
     """Check if the given color is similar to any color in the list."""
@@ -261,8 +211,9 @@ def is_color_similar(color, color_list, color_space="rgb"):
         for existing_color in color_list:
             color1_np = np.array(color)
             color2_np = np.array(existing_color)
-            color_distance = np.sqrt(color1_np[0] * 0.3 + color1_np[1] * 0.59 + color1_np[2] * 0.11)
-            
+            color_distance = np.sqrt(
+                color1_np[0] * 0.3 + color1_np[1] * 0.59 + color1_np[2] * 0.11)
+
             similarity = (max_distance - color_distance) / max_distance
             if similarity > 1 - RGB_THRESHOLD:
                 return True
@@ -273,7 +224,7 @@ def is_color_similar(color, color_list, color_space="rgb"):
         for existing_color in color_list:
             color1_np = np.array(color)
             color2_np = np.array(existing_color)
-            color_distance= np.sqrt(np.sum((color1_np - color2_np)**2))
+            color_distance = np.sqrt(np.sum((color1_np - color2_np)**2))
             similarity = (max_distance - color_distance) / max_distance
             if similarity > 1 - LAB_THRESHOLD:
                 return True
@@ -281,16 +232,34 @@ def is_color_similar(color, color_list, color_space="rgb"):
     elif color_space == "hsv":
         HSV_THRESHOLD = 0.05
         for existing_color in color_list:
-            hue_distance = min(abs(color[0] - existing_color[0]), 1 - abs(color[0] - existing_color[0]))
+            hue_distance = min(
+                abs(color[0] - existing_color[0]), 1 - abs(color[0] - existing_color[0]))
             saturation_distance = abs(color[1] - existing_color[1])
             value_distance = abs(color[2] - existing_color[2])
-            color_distance = np.sqrt(hue_distance**2 + saturation_distance**2 + value_distance**2)
+            color_distance = np.sqrt(
+                hue_distance**2 + saturation_distance**2 + value_distance**2)
             similarity = (1 - color_distance)
             if similarity > 1 - HSV_THRESHOLD:
                 return True
         return False
     else:
         raise ValueError("Invalid color space.")
+
+
+def get_detected_objects(img, preprocessed_img, contours):
+    """
+    Get the deteced objects bounding boxes from the contours.
+    """
+    detected_objects = [DetectedObject(
+        x, y, x+w, y+h) for x, y, w, h in [cv2.boundingRect(cnt) for cnt in contours]]
+    scale_factor = img.shape[0] / preprocessed_img.shape[0]
+    detected_objects = [DetectedObject(
+        int(obj.xmin * scale_factor),
+        int(obj.ymin * scale_factor),
+        int(obj.xmax * scale_factor),
+        int(obj.ymax * scale_factor)
+    ) for obj in detected_objects]
+    return detected_objects
 
 
 if __name__ == '__main__':
